@@ -1,9 +1,3 @@
-/*
- * Fixed: Drive Straight and pulsing with drive straight (should test more)
- * Need to fix ASAP: turn pulse method and turn
- * To Do: driveTo and complete token (PPT3)
- */
-
 #include <FEHLCD.h>
 #include <FEHIO.h>
 #include <FEHUtility.h>
@@ -29,7 +23,7 @@
 #define INITIAL_ARM_ANGLE 0.0
 #define INITIAL_CLAW_ANGLE 0.0
 #define TIME_FOR_DIST dist/(112.19*abs(motor_percent)*3.5*PI/6000)
-#define TIME_FOR_TURN ((8.58*PI/4)/(112.19*abs(motor_percent)*3.5*PI/6000)) * (angle/90.0)
+#define TIME_FOR_TURN 1.5*((8.58*PI/4)/(112.19*abs(motor_percent)*3.5*PI/6000)) * (angle/90.0)
 
 using namespace std;
 
@@ -85,8 +79,6 @@ bool isStartOfRun = true;
 float distance(float x, float y, float z, float w){
 
     return pow(pow(z - x,2) + pow(w - y,2),.5);
-
-
 }
 
 /*
@@ -107,7 +99,6 @@ char* const getLightColor(){
     return "None";
 
 }
-
 
 
 void driveStraight(float motor_percent, float dist, float f[]){
@@ -162,10 +153,11 @@ void driveStraight(float motor_percent, float dist, float f[]){
 }
 
 void pulseDrive(float initCoord[], float dist,bool isForward){
-    LCD.WriteLine(*initCoord);
-    LCD.WriteLine(*(initCoord+1));
+    //SD.Printf("\n\n\n");
+    //SD.Printf("Initial x coordinate: %f\n",*initCoord);
+    //SD.Printf("Initial x coordinate: %f\n",*(initCoord+1));
     while(distance(*initCoord,*(initCoord+1), RPS.X(),RPS.Y()) < dist - 1 || distance(*initCoord,*(initCoord+1), RPS.X(),RPS.Y()) > dist + 1){
-        LCD.WriteLine(distance(*initCoord,*(initCoord+1), RPS.X(),RPS.Y()));
+        //SD.Printf("Distance: %f\n",distance(*initCoord,*(initCoord+1), RPS.X(),RPS.Y()));
         float temp[2];
         if(distance(*initCoord,*(initCoord+1), RPS.X(),RPS.Y()) < dist){
             driveStraight(30 * pow(-1,(int)!isForward),.5,temp);
@@ -176,117 +168,8 @@ void pulseDrive(float initCoord[], float dist,bool isForward){
     }
 }
 
-//void check_x_minus(float x_coordinate) //using RPS while robot is in the -x direction
-//{
-//    //check whether the robot is within an acceptable range
-//    while(RPS.X() < x_coordinate - 1 || RPS.X() > x_coordinate + 1)
-//    {
-//        if(RPS.X() > x_coordinate)
-//        {
-//            //pulse the motors for a short duration in the correct direction
-//            driveStraight(30,.5);
 
-//        }
-//        else if(RPS.X() < x_coordinate)
-//        {
-//            //pulse the motors for a short duration in the correct direction
-
-//            driveStraight(-30,.5);
-//        }
-//        Sleep(.5);
-//    }
-//}
-
-//void check_x_plus(float x_coordinate) //using RPS while robot is in the +x direction
-//{
-//    //check whether the robot is within an acceptable range
-//    while(RPS.X() < x_coordinate - 1 || RPS.X() > x_coordinate + 1)
-//    {
-//        if(RPS.X() > x_coordinate)
-//        {
-//            //pulse the motors for a short duration in the correct direction
-//            driveStraight(-30,.5);
-
-
-//        }
-//        else if(RPS.X() < x_coordinate)
-//        {
-//            //pulse the motors for a short duration in the correct direction
-
-//            driveStraight(30,.5);
-//        }
-//        Sleep(.5);
-//    }
-//}
-
-//void check_y_minus(float y_coordinate) //using RPS while robot is in the -y direction
-//{
-//    //check whether the robot is within an acceptable range
-//    while(RPS.Y() < y_coordinate - 1 || RPS.Y() > y_coordinate + 1)
-//    {
-//        if(RPS.Y() > y_coordinate)
-//        {
-//            //pulse the motors for a short duration in the correct direction
-
-//            driveStraight(30,.25);
-//        }
-//        else if(RPS.Y() < y_coordinate)
-//        {
-//            //pulse the motors for a short duration in the correct direction
-
-//            driveStraight(-30,.25);
-//        }
-//    }
-//}
-
-//void check_y_plus(float y_coordinate) //using RPS while robot is in the +y direction
-//{
-//    //check whether the robot is within an acceptable range
-//    while(RPS.Y() < y_coordinate - 1 || RPS.Y() > y_coordinate + 1)
-//    {
-//        if(RPS.Y() > y_coordinate)
-//        {
-//            //pulse the motors for a short duration in the correct direction
-
-//           driveStraight(-30,.25);
-//        }
-//        else if(RPS.Y() < y_coordinate)
-//        {
-//            //pulse the motors for a short duration in the correct direction
-
-//            driveStraight(30,.25);
-//        }
-//    }
-//}
-
-
-
-
-/*
- * Change drive method to match Eploration 3 since recursion isn't working
- */
-
-void driveStraightWithTime(float motor_percent, float t){
-    left_motor.SetPercent(motor_percent);
-
-    right_motor.SetPercent(motor_percent);
-    Sleep(t);
-    right_motor.Stop();
-    left_motor.Stop();
-}
-
-void turnWithTime(bool isLeft, bool isFront, float motor_percent, float angle, float t){
-    left_motor.SetPercent(motor_percent * pow(-1,(int)isLeft) * pow(-1,(int)!isFront));
-
-    right_motor.SetPercent(motor_percent * pow(-1,(int)!isLeft) * pow(-1,(int)!isFront));
-
-    Sleep(t);
-    right_motor.Stop();
-    left_motor.Stop();
-}
-
-
-void turn(bool isLeft, float motor_percent, float angle, float initHeading[], float expHeading[]){
+void turn(bool isLeft, float motor_percent, float angle, float expHeading[]){
 
     //Turn both motors on at given percent motor power.
 
@@ -299,12 +182,12 @@ void turn(bool isLeft, float motor_percent, float angle, float initHeading[], fl
 
     //Get current orientation
 
-    initHeading[0] = RPS.Heading();
+    float initHeading = RPS.Heading();
 
     //Move until expected orientation is reached
 
-    //SD.Printf("\n\n\n");
-    expHeading[0] = isLeft ? fmod((initHeading[0] + angle+360), (float)360.0) : fmod((initHeading[0] - angle+360), (float)360.0);
+    ////SD.Printf("\n\n\n");
+    expHeading[0] = isLeft ? fmod((initHeading + angle+360), (float)360.0) : fmod((initHeading - angle+360), (float)360.0);
 
     float currTime = TimeNow();
 
@@ -341,163 +224,229 @@ void turn(bool isLeft, float motor_percent, float angle, float initHeading[], fl
     left_motor.Stop();
 }
 
-void pulseTurn(float* initHeading, float* expHeading){
-    float iH[1];float eH[1];
+void pulseTurn(float* expHeading){
+    float eH[1];
     if(*expHeading < 2 || *expHeading >= 358){
         if(RPS.Heading() < 358 && RPS.Heading() > 270){
-            turn(true,30, abs((360*(*expHeading < 360 && *expHeading > 358) + RPS.Heading()) - *expHeading)/90,iH,eH);
+            turn(true,30, abs((360*(*expHeading < 2 && *expHeading > 0) + *expHeading) - RPS.Heading())/90,eH);
         }else if(RPS.Heading() > 2  && RPS.Heading() < 90){
-            turn(false,30, abs((360*(*expHeading < 2 && *expHeading > 0) + RPS.Heading()) - *expHeading)/90,iH,eH);
+            turn(false,30, abs((360*(*expHeading < 360 && *expHeading >358) + RPS.Heading()) - *expHeading)/90,eH);
         }
         Sleep(.5);
+        LCD.WriteLine("Ello");
+
     }else{
         while (RPS.Heading() > *expHeading + 2 || RPS.Heading() < *expHeading - 2)
         {
-
             if (RPS.Heading() > *expHeading)
             {
-
-                turn(false,30,1,iH,eH);
+                turn(false,30,3,eH);
             }
 
             else if(RPS.Heading() < *expHeading)
             {
-                turn(true,30,1,iH,eH);
+                turn(true,30,3,eH);
             }
             Sleep(.5);
         }
     }
 }
 
-//void driveTo(Task t){
+/*
+ * Navigate with time purely
+ */
 
-//    platform_servo.SetDegree(90);
+void driveStraightWithTime(float motor_percent, float t){
+    left_motor.SetPercent(motor_percent);
+    right_motor.SetPercent(motor_percent);
 
-//    Sleep(.5);
+    Sleep(t);
 
-//    arm_servo.SetDegree(180);
+    right_motor.Stop();
+    left_motor.Stop();
+}
 
-//    switch(t){
+void turnWithTime(bool isLeft, float motor_percent, float t){
+    left_motor.SetPercent(motor_percent * pow(-1,(int)isLeft));
+    right_motor.SetPercent(motor_percent * pow(-1,(int)!isLeft));
 
-//    case TOKEN:
+    Sleep(t);
 
-//        break;
-
-//    case DDR:
-//        driveStraight(30,4.8);
-//        //driveStraightWithTime(30,.9);
-//        turn(false,30,95);
-//        //turnWithTime(false,true,30,95,2);
-//        driveStraight(30,6);
-//        //driveStraightWithTime(30,2);
-//        break;
-
-//    case FOOSBALL:{
-//        char* c = getLightColor();
-//        if(strcmp("Red",c) == 0){
-//            driveStraightWithTime(-30,1.7);
-//            turnWithTime(false,false,30,45,1.25);
-//            driveStraightWithTime(-30,.25);
-//            turnWithTime(false,false,30,45,1.25);
-//            driveStraightWithTime(30,.5);
-//        }else{
-//            driveStraightWithTime(-30,.5);
-//            turnWithTime(false,false,30,45,1.25);
-//        }
+    right_motor.Stop();
+    left_motor.Stop();
+}
 
 
-//        turnWithTime(true,true,30,80,2.5);
+void driveTo(Task t){
 
-//        driveStraightWithTime(35,7.25);
-//        turnWithTime(true,true,30,25,1.2);
-//        driveStraightWithTime(35,1.35);
-//    }
-//        break;
+    platform_servo.SetDegree(150);
 
-//    case LEVER:
+    Sleep(.5);
 
-//        break;
+    arm_servo.SetDegree(180);
 
-//    case BUTTON:
+    Sleep(.5);
 
-//        break;
-
-//    default:
-
-//        LCD.WriteLine("This message should not appear. You goofed.");
-
-//    }
-
-//}
-
-//void complete(Task t){
-
-//    switch(t){
-
-//    case TOKEN:
-
-//        break;
-
-//    case DDR:
-//    {
-//        char* c = getLightColor();
-//        if(strcmp("Red",c) == 0){
-
-//            LCD.Clear(RED);
-//            //turn(false,false,30,50);
-//            turnWithTime(false,false,30,98,1.5);
-//            driveStraightWithTime(30,.4);
-//            turnWithTime(false,true,30,50,2.2);
-//            driveStraightWithTime(30,.5);
+    platform_servo.SetDegree(160);
 
 
-//        }else if(strcmp("Blue",c) == 0){
+    switch(t){
 
-//            LCD.Clear(BLUE);
+    case TOKEN:
+    {
+        float initCoord[2];
+        float expHeading[2];
+        driveStraight(30,7.25,initCoord);
+        pulseDrive(initCoord,7.25,true);
+        turn(true,30,45,expHeading);
+        pulseTurn(expHeading);
+        driveStraight(30,10.5,initCoord);
+        pulseDrive(initCoord,10.5,true);
 
-//            turnWithTime(false,false,30,50,1.7);
-//            driveStraightWithTime(30,.98);
-//            turnWithTime(false,true,30,50,1.2);
-//            //driveStraight(30,.7);
-//            driveStraightWithTime(30,.5);
+    }
+        break;
 
-//        }else{
+    case DDR:
 
-//            LCD.Clear(BLACK);
+        //        driveStraight(30,4.8);
+        //        //driveStraightWithTime(30,.9);
+        //        turn(false,30,95);
+        //        //turnWithTime(false,true,30,95,2);
+        //        driveStraight(30,6);
+        //        //driveStraightWithTime(30,2);
+        break;
 
-//            LCD.WriteLine("CdS cell didn't read anything. It goofed.");
-//            turnWithTime(false,false,30,50,1.7);
-//            driveStraightWithTime(30,.95);
-//            turnWithTime(false,true,30,50,1.2);
-//            //driveStraight(30,.7);
-//            driveStraightWithTime(30,.5);
-//        }
+    case FOOSBALL:{
+        //        char* c = getLightColor();
+        //        if(strcmp("Red",c) == 0){
+        //            driveStraightWithTime(-30,1.7);
+        //            turnWithTime(false,false,30,45,1.25);
+        //            driveStraightWithTime(-30,.25);
+        //            turnWithTime(false,false,30,45,1.25);
+        //            driveStraightWithTime(30,.5);
+        //        }else{
+        //            driveStraightWithTime(-30,.5);
+        //            turnWithTime(false,false,30,45,1.25);
+        //        }
 
-//        Sleep(5.0);
 
-//        //arm_servo.SetDegree(120);
-//    }
-//        break;
+        //        turnWithTime(true,true,30,80,2.5);
 
-//    case FOOSBALL:
+        //        driveStraightWithTime(35,7.25);
+        //        turnWithTime(true,true,30,25,1.2);
+        //        driveStraightWithTime(35,1.35);
+    }
+        break;
 
-//        break;
+    case LEVER:
+    {
+        float eh[1];
+        float ic[2];
+        driveStraight(-30,12,ic);
+        pulseDrive(ic,12,false);
+        turn(false,30,95,eh);
+        eh[0] = 0;
+        pulseTurn(eh);
+        driveStraight(30,13.5,ic);
+        pulseDrive(ic,13.5,true);
+        turn(true,30,90,eh);
+        pulseTurn(eh);
+        driveStraight(30,20,ic);
+        turn(true,30,45,eh);
+        //driveStraight(30,3,ic);
 
-//    case LEVER:
+    }
+        break;
 
-//        break;
+    case BUTTON:
 
-//    case BUTTON:
+        break;
 
-//        break;
+    default:
 
-//    default:
+        LCD.WriteLine("This message should not appear. You goofed.");
 
-//        LCD.WriteLine("This message should not appear. You goofed.");
+    }
 
-//    }
+}
 
-//}
+void complete(Task t){
+
+    switch(t){
+
+    case TOKEN:
+        platform_servo.SetDegree(0);
+        Sleep(.5);
+        arm_servo.SetDegree(45);
+        Sleep(.5);
+        claw_servo.SetDegree(80);
+        platform_servo.SetDegree(15);
+        Sleep(1.0);
+        platform_servo.SetDegree(0);
+        Sleep(1.0);
+        claw_servo.SetDegree(0);
+        break;
+
+    case DDR:
+    {
+        //        char* c = getLightColor();
+        //        if(strcmp("Red",c) == 0){
+
+        //            LCD.Clear(RED);
+        //            //turn(false,false,30,50);
+        //            turnWithTime(false,false,30,98,1.5);
+        //            driveStraightWithTime(30,.4);
+        //            turnWithTime(false,true,30,50,2.2);
+        //            driveStraightWithTime(30,.5);
+
+
+        //        }else if(strcmp("Blue",c) == 0){
+
+        //            LCD.Clear(BLUE);
+
+        //            turnWithTime(false,false,30,50,1.7);
+        //            driveStraightWithTime(30,.98);
+        //            turnWithTime(false,true,30,50,1.2);
+        //            //driveStraight(30,.7);
+        //            driveStraightWithTime(30,.5);
+
+        //        }else{
+
+        //            LCD.Clear(BLACK);
+
+        //            LCD.WriteLine("CdS cell didn't read anything. It goofed.");
+        //            turnWithTime(false,false,30,50,1.7);
+        //            driveStraightWithTime(30,.95);
+        //            turnWithTime(false,true,30,50,1.2);
+        //            //driveStraight(30,.7);
+        //            driveStraightWithTime(30,.5);
+        //        }
+
+        //        Sleep(5.0);
+
+        //        //arm_servo.SetDegree(120);
+    }
+        break;
+
+    case FOOSBALL:
+
+        break;
+
+    case LEVER:
+
+        break;
+
+    case BUTTON:
+
+        break;
+
+    default:
+
+        LCD.WriteLine("This message should not appear. You goofed.");
+
+    }
+
+}
 
 /*
  * Initializing robot state
@@ -622,37 +571,37 @@ void testMethods(){
         if(turn_button.Pressed(x,y,0)){
             LCD.Clear(BLACK);
             //Perform all possible 90 degree turns with 1/2 second gaps in between each
-            float ih[1], eh[1];
+            float eh[1];
             LCD.WriteLine(RPS.Heading());
             LCD.WriteLine("");
-            turn(true,30,90,ih,eh);
+            turn(true,30,90,eh);
 
             LCD.WriteLine("Turn");
-            pulseTurn(ih,eh);
+            pulseTurn(eh);
             LCD.WriteLine("Pulsed");
 
             LCD.WriteLine(RPS.Heading());
             LCD.WriteLine("");
-            turn(true,30,90,ih,eh);
+            turn(true,30,90,eh);
 
             LCD.WriteLine("Turn");
-            pulseTurn(ih,eh);
+            pulseTurn(eh);
             LCD.WriteLine("Pulsed");
 
             LCD.WriteLine(RPS.Heading());
             LCD.WriteLine("");
-            turn(true,30,90,ih,eh);
+            turn(true,30,90,eh);
 
             LCD.WriteLine("Turn");
-            pulseTurn(ih,eh);
+            pulseTurn(eh);
             LCD.WriteLine("Pulsed");
 
             LCD.WriteLine(RPS.Heading());
             LCD.WriteLine("");
-            turn(true,30,90,ih,eh);
+            turn(true,30,90,eh);
 
             LCD.WriteLine("Turn");
-            pulseTurn(ih,eh);
+            pulseTurn(eh);
             LCD.WriteLine("Pulsed");
 
         }else if (arm_button.Pressed(x,y,0)) {
@@ -690,7 +639,6 @@ void testMethods(){
  */
 
 int main(void){
-    SD.OpenLog();
 
     LCD.Clear(BLACK);
 
@@ -699,11 +647,12 @@ int main(void){
      */
 
     RPS.InitializeTouchMenu();
+    SD.OpenLog();
 
-    //    /*
-    //     * Initialize robot
-    //     */
 
+    /*
+     * Initialize robot
+     */
 
     initialState();
 
@@ -711,7 +660,7 @@ int main(void){
      * Method to test various features of the robot
      */
 
-    testMethods();
+    //testMethods();
     //claw_servo.TouchCalibrate();
 
     /*
@@ -726,14 +675,14 @@ int main(void){
 
     //               }
 
-    //    int currTime = TimeNow();
+    int currTime = TimeNow();
 
-    //    while(strcmp("Red",getLightColor()) != 0 && TimeNow() - currTime < 10);
+    while(strcmp("Red",getLightColor()) != 0 && TimeNow() - currTime < 10);
 
-    //    driveTo(DDR);
-    //    Sleep(50);
-    //    complete(DDR);
-    //driveTo(FOOSBALL);
+    driveTo(TOKEN);
+    Sleep(50);
+    complete(TOKEN);
+    driveTo(LEVER);
     SD.CloseLog();
 
 }
