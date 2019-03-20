@@ -13,17 +13,18 @@
 #define DEPTH 8.4
 #define DISTANCE_TOLERANCE .05
 #define ANGLE_TOLERANCE .01
-#define ARM_SERVO_MIN 1900
-#define ARM_SERVO_MAX 2500
-#define CLAW_SERVO_MIN 525
-#define CLAW_SERVO_MAX 1230
-#define PLATFORM_SERVO_MIN 563
-#define PLATFORM_SERVO_MAX 2275
-#define INITIAL_PLATFORM_ANGLE 165.0
-#define INITIAL_ARM_ANGLE 0.0
+#define ARM_SERVO_MIN 1680
+#define ARM_SERVO_MAX 2450
+#define CLAW_SERVO_MIN 560
+#define CLAW_SERVO_MAX 1950
+#define PLATFORM_SERVO_MIN 560
+#define PLATFORM_SERVO_MAX 2500
+#define INITIAL_PLATFORM_ANGLE 180.0
+#define INITIAL_ARM_ANGLE 15.0
 #define INITIAL_CLAW_ANGLE 0.0
 #define TIME_FOR_DIST dist/(112.19*abs(motor_percent)*3.5*PI/6000)
 #define TIME_FOR_TURN 1.5*((8.58*PI/4)/(112.19*abs(motor_percent)*3.5*PI/6000)) * (angle/90.0)
+#define DRIVING_STATE  arm_servo.SetDegree(180);Sleep(t);platform_servo.SetDegree(150);
 
 using namespace std;
 
@@ -101,74 +102,6 @@ char* const getLightColor(){
 }
 
 
-void driveStraight(float motor_percent, float dist, float f[]){
-
-    //Get initial x and y coordinates from RPS and store in initCoords
-    f[0] = RPS.X();
-    f[1] = RPS.Y();
-
-    //Turn both motors on at given percent motor power.
-    left_motor.SetPercent(motor_percent);
-    right_motor.SetPercent(motor_percent);
-
-    // Test to allow the robot to drive over the initial red light
-    if(isStartOfRun){
-        Sleep(.5);
-        isStartOfRun = false;
-    }
-
-    //    //Time to wait before stopping the motors
-    //    while(distance(initX, initY, RPS.X(), RPS.Y()) < dist - 1 || distance(initX, initY, RPS.X(), RPS.Y()) > dist + 1){
-
-    //        if(!hasDoneDDR){
-    //            lightColor = getLightColor();
-
-    //            if(strcmp("None" , lightColor) != 0){
-    //                left_motor.Stop();
-    //                right_motor.Stop();
-    //                hasDoneDDR = true;
-    //            }
-    //        }
-    //    }
-
-    //Less reliant on RPS
-
-    float currTime = TimeNow();
-
-    while(TimeNow() - currTime < TIME_FOR_DIST ){
-        if(!hasDoneDDR){
-            lightColor = getLightColor();
-
-            if(strcmp("None" , lightColor) != 0){
-                left_motor.Stop();
-                right_motor.Stop();
-                hasDoneDDR = true;
-            }
-        }
-    }
-
-    //Stop both motors.
-    right_motor.Stop();
-    left_motor.Stop();
-}
-
-void pulseDrive(float initCoord[], float dist,bool isForward){
-    //SD.Printf("\n\n\n");
-    //SD.Printf("Initial x coordinate: %f\n",*initCoord);
-    //SD.Printf("Initial x coordinate: %f\n",*(initCoord+1));
-    while(distance(*initCoord,*(initCoord+1), RPS.X(),RPS.Y()) < dist - 1 || distance(*initCoord,*(initCoord+1), RPS.X(),RPS.Y()) > dist + 1){
-        //SD.Printf("Distance: %f\n",distance(*initCoord,*(initCoord+1), RPS.X(),RPS.Y()));
-        float temp[2];
-        if(distance(*initCoord,*(initCoord+1), RPS.X(),RPS.Y()) < dist){
-            driveStraight(30 * pow(-1,(int)!isForward),.5,temp);
-        }else if(distance(*initCoord,*(initCoord+1), RPS.X(),RPS.Y()) > dist){
-            driveStraight(-30 * pow(-1,(int)!isForward),.5,temp);
-        }
-        Sleep(.5);
-    }
-}
-
-
 void turn(bool isLeft, float motor_percent, float angle, float expHeading[]){
 
     //Turn both motors on at given percent motor power.
@@ -226,17 +159,15 @@ void turn(bool isLeft, float motor_percent, float angle, float expHeading[]){
 
 void pulseTurn(float* expHeading){
     float eH[1];
-    if(*expHeading < 2 || *expHeading >= 358){
-        if(RPS.Heading() < 358 && RPS.Heading() > 270){
-            turn(true,30, abs((360*(*expHeading < 2 && *expHeading > 0) + *expHeading) - RPS.Heading())/90,eH);
-        }else if(RPS.Heading() > 2  && RPS.Heading() < 90){
-            turn(false,30, abs((360*(*expHeading < 360 && *expHeading >358) + RPS.Heading()) - *expHeading)/90,eH);
+    if(*expHeading < 1.5 || *expHeading >= 358.5){
+        if(RPS.Heading() < 358.5 && RPS.Heading() > 270){
+            turn(true,30, abs((360*(*expHeading < 1.5 && *expHeading > 0) + *expHeading) - RPS.Heading())/90,eH);
+        }else if(RPS.Heading() > 1.5  && RPS.Heading() < 90){
+            turn(false,30, abs((360*(*expHeading < 360 && *expHeading >358.5) + RPS.Heading()) - *expHeading)/90,eH);
         }
         Sleep(.5);
-        LCD.WriteLine("Ello");
-
     }else{
-        while (RPS.Heading() > *expHeading + 2 || RPS.Heading() < *expHeading - 2)
+        while (RPS.Heading() > *expHeading + 1.5 || RPS.Heading() < *expHeading - 1.5)
         {
             if (RPS.Heading() > *expHeading)
             {
@@ -251,6 +182,124 @@ void pulseTurn(float* expHeading){
         }
     }
 }
+
+void keepStraight(float motor_percent, float* expHeading){
+    right_motor.SetPercent(motor_percent);
+    left_motor.SetPercent(motor_percent);
+    float eH[1];
+    if(*expHeading < 1.5 || *expHeading >= 358.5){
+        float angle = abs((360*(*expHeading < 1.5 && *expHeading > 0) + *expHeading) - RPS.Heading())/90;
+        motor_percent+=2.5;
+        if(RPS.Heading() < 358.5 && RPS.Heading() > 270){
+            right_motor.SetPercent(motor_percent);
+        }else if(RPS.Heading() > 1.5  && RPS.Heading() < 90){
+            left_motor.SetPercent(motor_percent);
+        }
+        Sleep(TIME_FOR_TURN);
+        motor_percent-=2.5;
+        Sleep(.5);
+
+    }else{
+        while (RPS.Heading() > *expHeading + 1.5 || RPS.Heading() < *expHeading - 1.5)
+        {
+            float angle = 3;
+            motor_percent+=2.5;
+            if (RPS.Heading() > *expHeading)
+            {
+                right_motor.SetPercent(motor_percent);
+            }
+
+            else if(RPS.Heading() < *expHeading)
+            {
+                left_motor.SetPercent(motor_percent);
+
+            }
+            Sleep(TIME_FOR_TURN);
+            motor_percent-=2.5;
+            Sleep(.5);
+        }
+    }
+}
+
+void driveStraight(float motor_percent, float dist, float f[]){
+    do{
+
+        //Get initial x and y coordinates from RPS and store in initCoords
+        f[0] = RPS.X();
+        f[1] = RPS.Y();
+    }while(RPS.X() < 0 || RPS.Y() < 0);
+
+    //Turn both motors on at given percent motor power.
+
+
+    float h[] = {RPS.Heading()};
+
+    // Test to allow the robot to drive over the initial red light
+    if(isStartOfRun){
+        Sleep(.5);
+        isStartOfRun = false;
+    }
+
+    //    //Time to wait before stopping the motors
+    //    while(distance(initX, initY, RPS.X(), RPS.Y()) < dist - 1 || distance(initX, initY, RPS.X(), RPS.Y()) > dist + 1){
+
+    //        if(!hasDoneDDR){
+    //            lightColor = getLightColor();
+
+    //            if(strcmp("None" , lightColor) != 0){
+    //                left_motor.Stop();
+    //                right_motor.Stop();
+    //                hasDoneDDR = true;
+    //            }
+    //        }
+    //    }
+
+    //Less reliant on RPS
+
+    float currTime = TimeNow();
+    float timeToRun = TIME_FOR_DIST;
+
+
+    //SD.Printf("Time for distance: %f\n",timeToRun);
+    while(TimeNow() - currTime < timeToRun ){
+        if(!hasDoneDDR){
+            lightColor = getLightColor();
+
+            if(strcmp("None" , lightColor) != 0){
+                left_motor.Stop();
+                right_motor.Stop();
+                hasDoneDDR = true;
+            }
+        }
+        //SD.Printf("Time Elapsed: %f\n", TimeNow() - currTime);
+        //keepStraight(motor_percent, h);
+        //        currTime = TimeNow();
+        //        timeToRun -= elapsedTime;
+        left_motor.SetPercent(motor_percent);
+        right_motor.SetPercent(motor_percent);
+    }
+    //SD.Printf("\n\n\n");
+    //Stop both motors.
+    right_motor.Stop();
+    left_motor.Stop();
+}
+
+void pulseDrive(float initCoord[], float dist,bool isForward){
+    //SD.Printf("\n\n\n");
+    //SD.Printf("Initial x coordinate: %f\n",*initCoord);
+    //SD.Printf("Initial x coordinate: %f\n",*(initCoord+1));
+    while(distance(*initCoord,*(initCoord+1), RPS.X(),RPS.Y()) < dist - .5 || distance(*initCoord,*(initCoord+1), RPS.X(),RPS.Y()) > dist + .5){
+        //SD.Printf("Distance: %f\n",distance(*initCoord,*(initCoord+1), RPS.X(),RPS.Y()));
+        float temp[2];
+        if(distance(*initCoord,*(initCoord+1), RPS.X(),RPS.Y()) < dist){
+            driveStraight(30 * pow(-1,(int)!isForward),.5,temp);
+        }else if(distance(*initCoord,*(initCoord+1), RPS.X(),RPS.Y()) > dist){
+            driveStraight(-30 * pow(-1,(int)!isForward),.5,temp);
+        }
+        Sleep(.5);
+    }
+}
+
 
 /*
  * Navigate with time purely
@@ -277,20 +326,13 @@ void turnWithTime(bool isLeft, float motor_percent, float t){
 }
 
 
-void driveTo(Task t){
-
+void driveTo(Task task){
+    float t;
     platform_servo.SetDegree(150);
-
     Sleep(.5);
-
     arm_servo.SetDegree(180);
-
     Sleep(.5);
-
-    platform_servo.SetDegree(160);
-
-
-    switch(t){
+    switch(task){
 
     case TOKEN:
     {
@@ -335,7 +377,33 @@ void driveTo(Task t){
         //        driveStraightWithTime(35,7.25);
         //        turnWithTime(true,true,30,25,1.2);
         //        driveStraightWithTime(35,1.35);
-    }
+
+            float initCoord[2];
+            float expHeading[1];
+            driveStraight(30,7,initCoord);
+            pulseDrive(initCoord,7,true);
+            turn(false,30,70,expHeading);
+            pulseTurn(expHeading);
+            driveStraight(30,9.25,initCoord);
+            pulseDrive(initCoord,9.25,true);
+            platform_servo.SetDegree(15);
+            Sleep(1.0);
+            arm_servo.SetDegree(0);
+            Sleep(5.0);
+            t = 1.0;
+            DRIVING_STATE
+            driveStraight(-30,4,initCoord);
+            pulseDrive(initCoord,4,false);
+            turn(true,30,30,expHeading);
+            expHeading[0] = 0.0;
+            pulseTurn(expHeading);
+            driveStraight(30,9,initCoord);
+            pulseDrive(initCoord,9,true);
+            turn(true,30,75,expHeading);
+            expHeading[0] = 80.0;
+            pulseTurn(expHeading);
+            driveStraight(40,60,initCoord);
+        }
         break;
 
     case LEVER:
@@ -645,7 +713,6 @@ int main(void){
     /*
      * Initialize the RPS
      */
-
     RPS.InitializeTouchMenu();
     SD.OpenLog();
 
@@ -661,7 +728,7 @@ int main(void){
      */
 
     //testMethods();
-    //claw_servo.TouchCalibrate();
+    //arm_servo.TouchCalibrate();
 
     /*
      * Reading CdS_Cell values
@@ -678,11 +745,8 @@ int main(void){
     int currTime = TimeNow();
 
     while(strcmp("Red",getLightColor()) != 0 && TimeNow() - currTime < 10);
+    driveTo(FOOSBALL);
 
-    driveTo(TOKEN);
-    Sleep(50);
-    complete(TOKEN);
-    driveTo(LEVER);
     SD.CloseLog();
 
 }
