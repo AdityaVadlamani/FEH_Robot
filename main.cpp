@@ -19,12 +19,12 @@
 #define CLAW_SERVO_MAX 1950
 #define PLATFORM_SERVO_MIN 560
 #define PLATFORM_SERVO_MAX 2500
-#define INITIAL_PLATFORM_ANGLE 180.0
-#define INITIAL_ARM_ANGLE 15.0
+#define INITIAL_PLATFORM_ANGLE 170.0
+#define INITIAL_ARM_ANGLE 60.0
 #define INITIAL_CLAW_ANGLE 0.0
-#define TIME_FOR_DIST dist/(112.19*abs(motor_percent)*3.5*PI/6000)
-#define TIME_FOR_TURN 1.5*((8.58*PI/4)/(112.19*abs(motor_percent)*3.5*PI/6000)) * (angle/90.0)
-#define DRIVING_STATE  arm_servo.SetDegree(180);Sleep(t);platform_servo.SetDegree(150);
+#define TIME_FOR_DIST abs(dist)/(112.19*abs(motor_percent)*3.5*PI/6000)
+#define TIME_FOR_TURN 1.5*((8.58*PI/4)/(112.19*abs(motor_percent)*3.5*PI/6000)) * (abs(angle)/90.0)
+#define DRIVING_STATE arm_servo.SetDegree(15);Sleep(.5);platform_servo.SetDegree(170);
 
 using namespace std;
 
@@ -110,46 +110,17 @@ void turn(bool isLeft, float motor_percent, float angle, float expHeading[]){
 
     right_motor.SetPercent(motor_percent * pow(-1,(int)!isLeft));
 
-
-    //Using RPS
-
     //Get current orientation
 
     float initHeading = RPS.Heading();
 
     //Move until expected orientation is reached
 
-    ////SD.Printf("\n\n\n");
     expHeading[0] = isLeft ? fmod((initHeading + angle+360), (float)360.0) : fmod((initHeading - angle+360), (float)360.0);
 
     float currTime = TimeNow();
 
     while(TimeNow() - currTime < TIME_FOR_TURN){}
-
-    /*    //Calculate the point to which the robot needs to travel based on decision to turn
-     *     Get initial position of robot QR code
-
-        float intX = RPS.X();
-
-        float intY = RPS.Y();
-
-        if(RPS.Heading() % 360 >= 359 && RPS.Heading() % 360 <= 1 || RPS.Heading() % 360 >= 179 && RPS.Heading() % 360 <= 181){
-
-             float dist = (distance(WIDTH*sin(angle * PI/180)*pow(-1,(int)!isFront) + intX ,
-
-                                    intY - (WIDTH - WIDTH*cos(angle * PI/180))*pow(-1,(int)isLeft), RPS.X(), RPS.Y()));
-
-        }else if(RPS.Heading() % 360 >= 89 && RPS.Heading() % 360 <= 91 || RPS.Heading() % 360 >= 269 && RPS.Heading() % 360 <= 271){
-
-               float dist = (distance(intY - (5 - 5*cos(angle * PI/180))*pow(-1,(int)isLeft),
-
-                                      5*sin(angle * PI/180)*pow(-1,(int)!isFront) + intX, RPS.X(), RPS.Y()));
-
-        }
-
-         //Horizontal and vertical will be determined somehow based on parallel to certain side
-
-         while(!(dist >= 0 && dist <= .005));*/
 
     //Stop both motors.
 
@@ -158,6 +129,8 @@ void turn(bool isLeft, float motor_percent, float angle, float expHeading[]){
 }
 
 void pulseTurn(float* expHeading){
+    int numPulsesCW = 0;
+    int numPulsesCCW = 0;
     float eH[1];
     if(*expHeading < 1.5 || *expHeading >= 358.5){
         if(RPS.Heading() < 358.5 && RPS.Heading() > 270){
@@ -165,69 +138,72 @@ void pulseTurn(float* expHeading){
         }else if(RPS.Heading() > 1.5  && RPS.Heading() < 90){
             turn(false,30, abs((360*(*expHeading < 360 && *expHeading >358.5) + RPS.Heading()) - *expHeading)/90,eH);
         }
-        Sleep(.5);
     }else{
-        while (RPS.Heading() > *expHeading + 1.5 || RPS.Heading() < *expHeading - 1.5)
-        {
-            if (RPS.Heading() > *expHeading)
-            {
-                turn(false,30,3,eH);
-            }
+        float angleOff = fmod(RPS.Heading() - *expHeading + 360.0,360.0) < abs(RPS.Heading() - *expHeading) ? fmod(RPS.Heading() - *expHeading + 360.0,360.0):abs(RPS.Heading() - *expHeading);
 
-            else if(RPS.Heading() < *expHeading)
-            {
-                turn(true,30,3,eH);
+        int k = 1;
+        while ((RPS.Heading() > *expHeading + 1.5 || RPS.Heading() < *expHeading - 1.5) && !(numPulsesCCW > 2 && numPulsesCW > 2))
+        {
+            SD.Printf("%f\n",RPS.Heading() - *expHeading);
+
+            if(fmod(RPS.Heading() +angleOff+360.0,360.0) != *expHeading){
+                turn(false,30,angleOff/pow(1.5,k) + 2.25,eH);
+                numPulsesCCW++;
+            }else{
+                turn(false,30,(angleOff/pow(1.5,k)) + 2.25,eH);
+                numPulsesCW++;
             }
-            Sleep(.5);
+            Sleep(.4);
+            k++;
         }
     }
 }
 
-void keepStraight(float motor_percent, float* expHeading){
-    right_motor.SetPercent(motor_percent);
-    left_motor.SetPercent(motor_percent);
-    float eH[1];
-    if(*expHeading < 1.5 || *expHeading >= 358.5){
-        float angle = abs((360*(*expHeading < 1.5 && *expHeading > 0) + *expHeading) - RPS.Heading())/90;
-        motor_percent+=2.5;
-        if(RPS.Heading() < 358.5 && RPS.Heading() > 270){
-            right_motor.SetPercent(motor_percent);
-        }else if(RPS.Heading() > 1.5  && RPS.Heading() < 90){
-            left_motor.SetPercent(motor_percent);
-        }
-        Sleep(TIME_FOR_TURN);
-        motor_percent-=2.5;
-        Sleep(.5);
+//void keepStraight(float motor_percent, float* expHeading){
+//    right_motor.SetPercent(motor_percent);
+//    left_motor.SetPercent(motor_percent);
+//    float eH[1];
+//    if(*expHeading < 1.25 || *expHeading >= 358.75){
+//        float angle = abs((360*(*expHeading < 1.25 && *expHeading > 0) + *expHeading) - RPS.Heading())/90;
+//        motor_percent+=2.5;
+//        if(RPS.Heading() < 358.5 && RPS.Heading() > 270){
+//            right_motor.SetPercent(motor_percent);
+//        }else if(RPS.Heading() > 1.5  && RPS.Heading() < 90){
+//            left_motor.SetPercent(motor_percent);
+//        }
+//        Sleep(TIME_FOR_TURN);
+//        motor_percent-=2.5;
+//        Sleep(.5);
 
-    }else{
-        while (RPS.Heading() > *expHeading + 1.5 || RPS.Heading() < *expHeading - 1.5)
-        {
-            float angle = 3;
-            motor_percent+=2.5;
-            if (RPS.Heading() > *expHeading)
-            {
-                right_motor.SetPercent(motor_percent);
-            }
+//    }else{
+//        while (RPS.Heading() > *expHeading + 1.5 || RPS.Heading() < *expHeading - 1.5)
+//        {
+//            float angle = 3;
+//            motor_percent+=2.5;
+//            if (RPS.Heading() > *expHeading)
+//            {
+//                right_motor.SetPercent(motor_percent);
+//            }
 
-            else if(RPS.Heading() < *expHeading)
-            {
-                left_motor.SetPercent(motor_percent);
+//            else if(RPS.Heading() < *expHeading)
+//            {
+//                left_motor.SetPercent(motor_percent);
 
-            }
-            Sleep(TIME_FOR_TURN);
-            motor_percent-=2.5;
-            Sleep(.5);
-        }
-    }
-}
+//            }
+//            Sleep(TIME_FOR_TURN);
+//            motor_percent-=2.5;
+//            Sleep(.5);
+//        }
+//    }
+//}
 
 void driveStraight(float motor_percent, float dist, float f[]){
-    do{
+    //do{
 
-        //Get initial x and y coordinates from RPS and store in initCoords
-        f[0] = RPS.X();
-        f[1] = RPS.Y();
-    }while(RPS.X() < 0 || RPS.Y() < 0);
+    //Get initial x and y coordinates from RPS and store in initCoords
+    f[0] = RPS.X();
+    f[1] = RPS.Y();
+    //}while(RPS.X() < 0 || RPS.Y() < 0);
 
     //Turn both motors on at given percent motor power.
 
@@ -239,20 +215,6 @@ void driveStraight(float motor_percent, float dist, float f[]){
         Sleep(.5);
         isStartOfRun = false;
     }
-
-    //    //Time to wait before stopping the motors
-    //    while(distance(initX, initY, RPS.X(), RPS.Y()) < dist - 1 || distance(initX, initY, RPS.X(), RPS.Y()) > dist + 1){
-
-    //        if(!hasDoneDDR){
-    //            lightColor = getLightColor();
-
-    //            if(strcmp("None" , lightColor) != 0){
-    //                left_motor.Stop();
-    //                right_motor.Stop();
-    //                hasDoneDDR = true;
-    //            }
-    //        }
-    //    }
 
     //Less reliant on RPS
 
@@ -285,21 +247,27 @@ void driveStraight(float motor_percent, float dist, float f[]){
 }
 
 void pulseDrive(float initCoord[], float dist,bool isForward){
-    //SD.Printf("\n\n\n");
-    //SD.Printf("Initial x coordinate: %f\n",*initCoord);
-    //SD.Printf("Initial x coordinate: %f\n",*(initCoord+1));
-    while(distance(*initCoord,*(initCoord+1), RPS.X(),RPS.Y()) < dist - .5 || distance(*initCoord,*(initCoord+1), RPS.X(),RPS.Y()) > dist + .5){
-        //SD.Printf("Distance: %f\n",distance(*initCoord,*(initCoord+1), RPS.X(),RPS.Y()));
+    int numPulsesForward = 0;
+    int numPulsesBack = 0;
+    int k = 1;
+    float distOff = (dist - distance(*initCoord,*(initCoord+1), RPS.X(),RPS.Y()));
+    while((distance(*initCoord,*(initCoord+1), RPS.X(),RPS.Y()) < dist - .5 || distance(*initCoord,*(initCoord+1), RPS.X(),RPS.Y()) > dist + .5) && !(numPulsesBack > 2 && numPulsesForward > 2)){
         float temp[2];
-        if(distance(*initCoord,*(initCoord+1), RPS.X(),RPS.Y()) < dist){
-            driveStraight(30 * pow(-1,(int)!isForward),.5,temp);
-        }else if(distance(*initCoord,*(initCoord+1), RPS.X(),RPS.Y()) > dist){
-            driveStraight(-30 * pow(-1,(int)!isForward),.5,temp);
+        LCD.WriteLine(dist - distance(*initCoord,*(initCoord+1), RPS.X(),RPS.Y()));
+        if(dist - distance(*initCoord,*(initCoord+1), RPS.X(),RPS.Y()) > 0){
+            driveStraight(30 * pow(-1,(int)!isForward),distOff/pow(2,k) + .5,temp);
+            numPulsesForward += 1*isForward;
+            numPulsesBack += 1*!isForward;
+
+        }else if(dist - distance(*initCoord,*(initCoord+1), RPS.X(),RPS.Y()) < 0){
+            driveStraight(-30 * pow(-1,(int)!isForward),distOff/pow(2,k) + .5,temp);
+            numPulsesForward += 1*!isForward;
+            numPulsesBack += 1*isForward;
         }
-        Sleep(.5);
+        Sleep(.4);
+        k++;
     }
 }
-
 
 /*
  * Navigate with time purely
@@ -327,11 +295,6 @@ void turnWithTime(bool isLeft, float motor_percent, float t){
 
 
 void driveTo(Task task){
-    float t;
-    platform_servo.SetDegree(150);
-    Sleep(.5);
-    arm_servo.SetDegree(180);
-    Sleep(.5);
     switch(task){
 
     case TOKEN:
@@ -378,32 +341,53 @@ void driveTo(Task task){
         //        turnWithTime(true,true,30,25,1.2);
         //        driveStraightWithTime(35,1.35);
 
-            float initCoord[2];
-            float expHeading[1];
-            driveStraight(30,7,initCoord);
-            pulseDrive(initCoord,7,true);
-            turn(false,30,70,expHeading);
-            pulseTurn(expHeading);
-            driveStraight(30,9.25,initCoord);
-            pulseDrive(initCoord,9.25,true);
-            platform_servo.SetDegree(15);
-            Sleep(1.0);
-            arm_servo.SetDegree(0);
-            Sleep(5.0);
-            t = 1.0;
-            DRIVING_STATE
-            driveStraight(-30,4,initCoord);
-            pulseDrive(initCoord,4,false);
-            turn(true,30,30,expHeading);
-            expHeading[0] = 0.0;
-            pulseTurn(expHeading);
-            driveStraight(30,9,initCoord);
-            pulseDrive(initCoord,9,true);
-            turn(true,30,75,expHeading);
-            expHeading[0] = 80.0;
-            pulseTurn(expHeading);
-            driveStraight(40,60,initCoord);
+        float initCoord[2];
+        float expHeading[1];
+        driveStraight(30,7,initCoord);
+        pulseDrive(initCoord,7,true);
+        turn(false,30,40,expHeading);
+        expHeading[0] = 0;
+        pulseTurn(expHeading);
+        driveStraight(30,14,initCoord);
+        pulseDrive(initCoord,14,true);
+        LCD.WriteLine("About to turn onto ramp");
+
+        //        platform_servo.SetDegree(22);
+        //        Sleep(1.0);
+        //        arm_servo.SetDegree(0);
+        //        Sleep(4.0);
+        //        DRIVING_STATE
+        //                driveStraight(-30,6,initCoord);
+        //        pulseDrive(initCoord,6,false);
+        //        turn(true,30,30,expHeading);
+        //        pulseTurn(expHeading);
+        //        driveStraight(30,12,initCoord);
+        //        pulseDrive(initCoord,12,true);
+        turn(true,30,90,expHeading);
+        expHeading[0] = 85.0;
+        pulseTurn(expHeading);
+        driveStraight(40,47.5,initCoord);
+        turn(true,30,30,expHeading);
+        driveStraight(30,5.5,initCoord);
+        turn(false,30,30,expHeading);
+        platform_servo.SetDegree(10);
+        Sleep(500);
+        arm_servo.SetDegree(5.0);
+        Sleep(500);
+        claw_servo.SetDegree(90);
+        Sleep(500);
+        driveStraight(30,2.25,initCoord);
+        Sleep(500);
+        claw_servo.SetDegree(30);
+        Sleep(500);
+        driveStraightWithTime(-30,.15);
+        for(int i = 1; i < 8;i++){
+            platform_servo.SetDegree(10+10*i);
+            Sleep(500);
         }
+
+
+    }
         break;
 
     case LEVER:
@@ -538,7 +522,6 @@ void initialState(){
 
     arm_servo.SetDegree(INITIAL_ARM_ANGLE);
     Sleep(.5);
-
     claw_servo.SetDegree(INITIAL_CLAW_ANGLE);
     Sleep(.5);
     platform_servo.SetDegree(INITIAL_PLATFORM_ANGLE);
@@ -708,7 +691,6 @@ void testMethods(){
 
 int main(void){
 
-    LCD.Clear(BLACK);
 
     /*
      * Initialize the RPS
@@ -716,36 +698,20 @@ int main(void){
     RPS.InitializeTouchMenu();
     SD.OpenLog();
 
-
     /*
      * Initialize robot
      */
 
     initialState();
 
-    /*
-     * Method to test various features of the robot
-     */
-
-    //testMethods();
-    //arm_servo.TouchCalibrate();
-
-    /*
-     * Reading CdS_Cell values
-     */
-
-    //               while(true){
-
-    //                   LCD.WriteLine(CdS_Cell.Value());
-
-    //                   Sleep(1.0);
-
-    //               }
+    //Start robot
 
     int currTime = TimeNow();
 
-    while(strcmp("Red",getLightColor()) != 0 && TimeNow() - currTime < 10);
+    while(/*!strcmp("Red",getLightColor()) && */TimeNow() - currTime < 10);
     driveTo(FOOSBALL);
+
+    //  testMethods();
 
     SD.CloseLog();
 
