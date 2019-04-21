@@ -804,6 +804,12 @@ void finalAction(){
 * Testing methods
 */
 
+/**
+ * @brief testingServo
+ *          specific testing method to test a servo
+ * @param s
+ *          servo to be tested
+ */
 void testingServo(FEHServo s){
 
     float deg = 0.00;
@@ -827,7 +833,10 @@ void testingServo(FEHServo s){
     }
 
 }
-
+/**
+ * @brief testMethods
+ *          menu which allows for different parts of robot to be tested
+ */
 void testMethods(){
 
     LCD.Clear(BLACK);
@@ -880,35 +889,35 @@ void testMethods(){
             LCD.WriteLine("");
             turn(CCW,30,90,eh);
             Sleep(.5);
-            //            LCD.WriteLine("Turn");
-            //            pulseTurn(eh);
-            //            LCD.WriteLine("Pulsed");
+                        LCD.WriteLine("Turn");
+                        pulseTurn(eh);
+                        LCD.WriteLine("Pulsed");
 
             LCD.WriteLine(RPS.Heading());
             LCD.WriteLine("");
             turn(CCW,30,90,eh);
             Sleep(.5);
 
-            //            LCD.WriteLine("Turn");
-            //            pulseTurn(eh);
-            //            LCD.WriteLine("Pulsed");
+                        LCD.WriteLine("Turn");
+                        pulseTurn(eh);
+                        LCD.WriteLine("Pulsed");
 
             LCD.WriteLine(RPS.Heading());
             LCD.WriteLine("");
             turn(CCW,30,90,eh);
             Sleep(.5);
 
-            //            LCD.WriteLine("Turn");
-            //            pulseTurn(eh);
-            //            LCD.WriteLine("Pulsed");
+                        LCD.WriteLine("Turn");
+                        pulseTurn(eh);
+                        LCD.WriteLine("Pulsed");
 
             LCD.WriteLine(RPS.Heading());
             LCD.WriteLine("");
             turn(CCW,30,90,eh);
 
-            //            LCD.WriteLine("Turn");
-            //            pulseTurn(eh);
-            //            LCD.WriteLine("Pulsed");
+                        LCD.WriteLine("Turn");
+                        pulseTurn(eh);
+                        LCD.WriteLine("Pulsed");
 
         }else if (arm_button.Pressed(x,y,0)) {
 
